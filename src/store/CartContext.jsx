@@ -1,6 +1,7 @@
 import { createContext } from "react";
 import { DUMMY_PRODUCTS } from "../dummy-products";
 import { useState } from "react";
+import { useReducer } from "react";
 
 const CartContext = createContext({
   items: [],
@@ -8,17 +9,13 @@ const CartContext = createContext({
   onAddItemToCart: () => {},
 });
 
-function CartContextProvider({ children }) {
-  const [shoppingCart, setShoppingCart] = useState({
-    items: [],
-  });
-
-  function handleAddItemToCart(id) {
-    setShoppingCart((prevShoppingCart) => {
-      const updatedItems = [...prevShoppingCart.items];
+function reducerFunction(state, action) {
+  switch (action.type) {
+    case "ADD_ITEM": {
+      const updatedItems = [...state.items];
 
       const existingCartItemIndex = updatedItems.findIndex(
-        (cartItem) => cartItem.id === id
+        (cartItem) => cartItem.id === action.id
       );
       const existingCartItem = updatedItems[existingCartItemIndex];
 
@@ -29,9 +26,11 @@ function CartContextProvider({ children }) {
         };
         updatedItems[existingCartItemIndex] = updatedItem;
       } else {
-        const product = DUMMY_PRODUCTS.find((product) => product.id === id);
+        const product = DUMMY_PRODUCTS.find(
+          (product) => product.id === action.id
+        );
         updatedItems.push({
-          id: id,
+          id: action.id,
           name: product.title,
           price: product.price,
           quantity: 1,
@@ -41,21 +40,18 @@ function CartContextProvider({ children }) {
       return {
         items: updatedItems,
       };
-    });
-  }
-
-  function handleUpdateCartItemQuantity(productId, amount) {
-    setShoppingCart((prevShoppingCart) => {
-      const updatedItems = [...prevShoppingCart.items];
+    }
+    case "UPDATE_ITEM": {
+      const updatedItems = [...state.items];
       const updatedItemIndex = updatedItems.findIndex(
-        (item) => item.id === productId
+        (item) => item.id === action.productId
       );
 
       const updatedItem = {
         ...updatedItems[updatedItemIndex],
       };
 
-      updatedItem.quantity += amount;
+      updatedItem.quantity += action.amount;
 
       if (updatedItem.quantity <= 0) {
         updatedItems.splice(updatedItemIndex, 1);
@@ -66,11 +62,35 @@ function CartContextProvider({ children }) {
       return {
         items: updatedItems,
       };
+    }
+  }
+}
+
+function CartContextProvider({ children }) {
+  const [ShoppingCartReducer, ShoppingCartDispatch] = useReducer(
+    reducerFunction,
+    {
+      items: [],
+    }
+  );
+
+  function handleAddItemToCart(id) {
+    ShoppingCartDispatch({
+      type: "ADD_ITEM",
+      id: id,
+    });
+  }
+
+  function handleUpdateCartItemQuantity(productId, amount) {
+    ShoppingCartDispatch({
+      type: "UPDATE_ITEM",
+      productId: productId,
+      amount: amount,
     });
   }
 
   const ctxValue = {
-    items: shoppingCart.items,
+    items: ShoppingCartReducer.items,
     onUpdateCartItemQuantity: handleUpdateCartItemQuantity,
     onAddItemToCart: handleAddItemToCart,
   };
